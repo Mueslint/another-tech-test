@@ -15,18 +15,35 @@ const weeklizeDate = (date) => {
   return week;
 };
 
+const logDate = (date, format) => console.log(moment(date).format(format));
+const hourFormatted = (date) => moment(date).format("h:mm");
+
+const fillOpeningsSlots = (week, openings) => {
+  return openings.map((opening) => {
+    const slots = [];
+    const startHour = moment(opening.starts_at);
+    const endHour = moment(opening.ends_at);
+
+    let slotHour = startHour;
+    while (hourFormatted(slotHour) !== hourFormatted(endHour)) {
+      slots.push(hourFormatted(slotHour));
+      slotHour = moment(slotHour).add(30, "m");
+    }
+    slots.push(hourFormatted(endHour));
+
+    return slots;
+  });
+};
+
 export default async function getAvailabilities(date) {
   // Implement your algorithm here
   const week = weeklizeDate(date);
 
   const availablities = week.map((weekDay) => ({ date: weekDay, slots: [] }));
   const openings = await knex("events").where("kind", "opening");
-
-  // const appointmentsDate = await knex("events")
-  //   .where("kind", "appointment")
-  //   .select("starts_at")
-  //   .map((appointment) => formatDate(appointment.starts_at));
-
+  const appointments = await knex("events").where("kind", "appointment");
+  const slots = fillOpeningsSlots(week, openings, appointments);
+  console.log(slots.flat());
   // console.log(appointmentsDate);
   // const weeklyOpenings = openings.filter((opening) => opening.weekly_recurring);
 
