@@ -14,6 +14,12 @@ describe("getAvailabilities", () => {
           weekly_recurring: true,
         },
         {
+          kind: "opening",
+          starts_at: new Date("2014-08-05 09:30"),
+          ends_at: new Date("2014-08-05 12:30"),
+          weekly_recurring: true,
+        },
+        {
           kind: "appointment",
           starts_at: new Date("2014-08-11 10:30"),
           ends_at: new Date("2014-08-11 11:30"),
