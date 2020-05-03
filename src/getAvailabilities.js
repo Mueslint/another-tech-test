@@ -55,20 +55,19 @@ const fillSlots = (source) => {
  * Returns an array of all available slots with their reference day as key for array search purpose
  */
 const substractSlots = (slot1, slot2) =>
-  slot1
-    .filter((hour) => !slot2.includes(hour))
-    .concat(slot2.filter((hour) => !slot1.includes(hour)));
-
-const getOpeningSlot = (openings, apptmntDay) =>
-  openings
-    .filter((opening) => opening.day === apptmntDay)
-    .map((opening) => opening.slots);
+  slot1.filter((hour) => !slot2.includes(hour));
+// check return
+// .concat(slot2.filter((hour) => !slot1.includes(hour)));
 
 const getAvailableSlots = (openingsSlots, appointmentsSlots) =>
-  appointmentsSlots.map(({ day, slots }) => {
-    // const { day, slots } = appointment;
-    const correspondingOpeningSlots = getOpeningSlot(openingsSlots, day).flat();
-    const availableSlots = substractSlots(slots, correspondingOpeningSlots);
+  openingsSlots.map(({ day, slots }) => {
+    const correspondingAppointmentsSlots = appointmentsSlots.find(
+      ({ day: apptmentday }) => apptmentday === day
+    );
+    const availableSlots = substractSlots(
+      slots,
+      correspondingAppointmentsSlots ? correspondingAppointmentsSlots.slots : []
+    );
 
     return { day, slots: availableSlots };
   });
@@ -79,9 +78,9 @@ const getAvailableSlots = (openingsSlots, appointmentsSlots) =>
  * Get the right slots for the input day
  */
 const getAvailableSlotsByDay = (availableSlots, day) => {
-  const daySlots = availableSlots.filter(
-    (availableSlot) => availableSlot.day === day
-  )[0];
+  const daySlots = availableSlots.find(
+    ({ day: availableDay }) => availableDay === day
+  );
   return daySlots ? daySlots.slots : [];
 };
 
@@ -90,9 +89,39 @@ export default async function getAvailabilities(date) {
   const week = weeklizeDate(date);
 
   const openings = await knex("events").where("kind", "opening");
-  const openingsSlots = fillSlots(openings);
-
   const appointments = await knex("events").where("kind", "appointment");
+
+  const openingsSlots = fillSlots(openings);
+  const appointmentsSlots = fillSlots(appointments);
+
+  const availableSlots = getAvailableSlots(openingsSlots, appointmentsSlots);
+
+  const availablities = week.map(({ day, date }) => ({
+    date,
+    slots: getAvailableSlotsByDay(availableSlots, day),
+  }));
+
+  return availablities;
+}
+
+export async function getAvailabilities2(date) {
+  // Implement your algorithm here
+  const week = weeklizeDate(date);
+
+  const query = await knex("events")
+    .where("starts_at", ">=", date)
+    .where("starts_at", "<", moment(date).add(1, "weeks").toDate());
+  console.log("test", query);
+
+  const [openings, appointments] = query.reduce(
+    (split, event) =>
+      event.kind === "opening"
+        ? [[...split[0], event], split[1]]
+        : [split[0], [...split[1], event]],
+    [[], []]
+  );
+
+  const openingsSlots = fillSlots(openings);
   const appointmentsSlots = fillSlots(appointments);
 
   const availableSlots = getAvailableSlots(openingsSlots, appointmentsSlots);
